@@ -23,7 +23,7 @@ Texture.prototype.fill = function(width, height, data) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, width, height, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, data);
 }
 
-function setupCanvas(canvas, options) {
+function setupCanvas(canvas, options,fragmentShaderSource) {
     var gl =
         canvas.getContext(
             "webgl",
@@ -46,36 +46,7 @@ function setupCanvas(canvas, options) {
     var vertexShader = gl.createShader(gl.VERTEX_SHADER);
     gl.shaderSource(vertexShader, vertexShaderSource);
     gl.compileShader(vertexShader);
-    var fragmentShaderSource = [
-    "precision highp float;",
-    "varying lowp vec2 vTextureCoord;",
-    "uniform sampler2D YTexture;",
-    "uniform sampler2D UTexture;",
-    "uniform sampler2D VTexture;",
-    "const mat4 YUV2RGB = mat4",
-    "(",
-    " 1.1643828125, 0, 1.59602734375, -.87078515625,",
-    " 1.1643828125, -.39176171875, -.81296875, .52959375,",
-    " 1.1643828125, 2.017234375, 0, -1.081390625,",
-    " 0, 0, 0, 1",
-    ");",
-    "const float threshold = 0.2;", // Adjust the threshold value as needed
-    "const float targetAlpha = 0.7;", // Adjust the target alpha value as needed
-    "void main(void) {",
-    " vec4 yuvColor = vec4( texture2D(YTexture, vTextureCoord).x, texture2D(UTexture, vTextureCoord).x, texture2D(VTexture, vTextureCoord).x, 1);",
-    " vec4 rgbColor = yuvColor * YUV2RGB;",
-    " float colorDistance = length(rgbColor.rgb - vec3(0, 0, 0));",
-    " if (colorDistance < threshold) {",
-    "   //gl_FragColor = vec4(rgbColor.rgb, targetAlpha);", // Set the target alpha value for colors close to black
-    "   gl_FragColor = rgbColor;",
-    " } else {",
-    "   gl_FragColor = rgbColor;",
-    " }",
-    "}"
-].join("\n");
-
-
-
+    
     var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
     gl.shaderSource(fragmentShader, fragmentShaderSource);
     gl.compileShader(fragmentShader);
@@ -146,7 +117,7 @@ function fillBlack(gl) {
 }
 
 module.exports = {
-    setupCanvas: function(canvas, options) {
+    setupCanvas: function(canvas, options, fragmentShaderSource) {
         if (!canvas)
             return;
 
@@ -159,7 +130,7 @@ module.exports = {
             };
         }
 
-        var glContext = setupCanvas(canvas, options);
+        var glContext = setupCanvas(canvas, options, fragmentShaderSource);
         if (!glContext)
             return;
 
