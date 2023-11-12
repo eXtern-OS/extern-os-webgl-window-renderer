@@ -1,3 +1,6 @@
+let sampleColoursInterval;
+let raa,rab, rac;
+let rba,rbb, rbc;
 function Texture(gl) {
     this.gl = gl;
     this.texture = gl.createTexture();
@@ -34,6 +37,7 @@ function setupCanvas(canvas, options,fragmentShaderSource) {
         return gl;
 
     var program = gl.createProgram();
+    
     var vertexShaderSource = [
         "attribute highp vec4 aVertexPosition;",
         "attribute vec2 aTextureCoord;",
@@ -54,6 +58,15 @@ function setupCanvas(canvas, options,fragmentShaderSource) {
     gl.attachShader(program, fragmentShader);
     gl.linkProgram(program);
     gl.useProgram(program);
+    raa = gl.getUniformLocation(program, 'raa');
+    rab = gl.getUniformLocation(program, 'rab');
+    rac = gl.getUniformLocation(program, 'rac');
+
+    /*header remover*/
+    rba = gl.getUniformLocation(program, 'rba');
+    rbb = gl.getUniformLocation(program, 'rbb');
+    rbc = gl.getUniformLocation(program, 'rbc');
+
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
         console.log("Shader link failed.");
     }
@@ -81,6 +94,7 @@ function setupCanvas(canvas, options,fragmentShaderSource) {
     gl.y.bind(0, program, "YTexture");
     gl.u.bind(1, program, "UTexture");
     gl.v.bind(2, program, "VTexture");
+    
 
     return gl;
 }
@@ -91,6 +105,8 @@ function frameSetup(canvas, gl, width, height) {
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
 }
 
+let showPixels = true;
+
 function renderFrame(gl, windowRenderFrame, width, height, uOffset, vOffset) {
     gl.y.fill(width, height,
         windowRenderFrame.subarray(0, uOffset));
@@ -100,6 +116,92 @@ function renderFrame(gl, windowRenderFrame, width, height, uOffset, vOffset) {
         windowRenderFrame.subarray(vOffset, windowRenderFrame.length));
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    if (showPixels) {
+        showPixels = false;
+        try {
+            const pixelPositions = [
+                {x: 0,y: 0},
+                {x: Math.round(width/4),y: Math.round(height/4)},
+                {x: Math.round(width/2),y: Math.round(height/2)},
+                {x: Math.round(width/1.5),y: Math.round(height/1.5)},
+                {x: Math.round(width),y: 0},
+            ]
+
+            const foundRGB = {};
+
+            pixelPositions.forEach(pixel => {
+                const x = pixel.x;
+                const y = pixel.y;
+                const pixels = new Uint8Array(4); // RGBA values will be stored here
+                gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+                if (!foundRGB[`${pixels[0]}-${pixels[1]}-${pixels[2]}`]) foundRGB[`${pixels[0]}-${pixels[1]}-${pixels[2]}`] = 1;
+                else foundRGB[`${pixels[0]}-${pixels[1]}-${pixels[2]}`]++;
+            });
+              
+              // Convert object to array of arrays
+              const unsortedArr = Object.entries(foundRGB);
+              
+              // Sort by keys
+              const sortedByKey = unsortedArr.sort((a, b) => a[0].localeCompare(b[0]));
+              
+              
+
+              if (sortedByKey.length && sortedByKey[sortedByKey.length-1][1] > 1) {
+                console.log({sortedByKey});
+                  const coloursSplit = sortedByKey[sortedByKey.length-1][0].split("-");
+
+                  gl.uniform1f(raa, Number(coloursSplit[0]).toFixed(1));
+                  gl.uniform1f(rab, Number(coloursSplit[1]).toFixed(1));
+                  gl.uniform1f(rac, Number(coloursSplit[2]).toFixed(1));
+                  
+              }
+
+
+              //For the top bars
+              const pixelPositionsB = [
+                {x: 0,y: 20},
+                {x: Math.round(width/4),y: 20},
+                {x: Math.round(width/2),y: 20},
+                {x: Math.round(width/1.5),y: 20},
+            ]
+
+              const foundRGBB = {};
+
+              pixelPositionsB.forEach(pixel => {
+                const x = pixel.x;
+                const y = pixel.y;
+                const pixels = new Uint8Array(4); // RGBA values will be stored here
+                gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+                if (!foundRGBB[`${pixels[0]}-${pixels[1]}-${pixels[2]}`]) foundRGBB[`${pixels[0]}-${pixels[1]}-${pixels[2]}`] = 1;
+                else foundRGBB[`${pixels[0]}-${pixels[1]}-${pixels[2]}`]++;
+            });
+              
+              // Convert object to array of arrays
+              const unsortedArrB = Object.entries(foundRGBB);
+              
+              // Sort by keys
+              const sortedByKeyB = unsortedArrB.sort((a, b) => a[0].localeCompare(b[0]));
+              
+              
+
+              if (sortedByKeyB.length && sortedByKeyB[sortedByKeyB.length-1][1] > 1) {
+                //console.log({sortedByKeyB});
+                  const coloursSplit = sortedByKeyB[sortedByKeyB.length-1][0].split("-");
+
+                  gl.uniform1f(rba, Number(coloursSplit[0]).toFixed(1));
+                  gl.uniform1f(rbb, Number(coloursSplit[1]).toFixed(1));
+                  gl.uniform1f(rbc, Number(coloursSplit[2]).toFixed(1));
+                  
+              }
+              
+
+
+            
+        } catch (e) {
+            console.log("eror pixels: ",e)
+        }
+    }
 }
 
 function fillBlack(gl) {
@@ -147,6 +249,12 @@ module.exports = {
                 fillBlack(this.gl);
             }
         }
+
+        if (sampleColoursInterval) clearInterval(sampleColoursInterval);
+
+        sampleColoursInterval = setInterval(function () {
+            showPixels = true;
+        }, 5000);
 
         return renderContext;
     }
